@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finanças">
+<title>Finanças Família</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181c;
+    --surface2: #1e2126;
+    --border: #2a2d35;
+    --text: #f0efe8;
+    --muted: #6b7280;
+    --accent: #c8f060;
+    --accent2: #60c8f0;
+    --red: #f06060;
+    --amber: #f0c060;
+    --eddie: #c8f060;
+    --luciana: #f0a0c8;
+    --radius: 16px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  .nav {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    background: rgba(14,15,17,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: var(--safe-bottom);
+    z-index: 100;
+  }
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 4px 10px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+
+  /* HEADER */
+  .header {
+    padding: 56px 20px 16px;
+    background: linear-gradient(180deg, rgba(200,240,96,0.06) 0%, transparent 100%);
+  }
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    letter-spacing: -0.5px;
+  }
+  .header-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* MONTH SELECTOR */
+  .month-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px 16px;
+  }
+  .month-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 20px;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .month-label {
+    flex: 1;
+    text-align: center;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 0 0 100px; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin: 0 16px 12px;
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .card-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    letter-spacing: -1px;
+  }
+  .card-value.positive { color: var(--accent); }
+  .card-value.negative { color: var(--red); }
+  .card-value.neutral { color: var(--text); }
+
+  /* SUMMARY GRID */
+  .sum-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 16px 12px;
+  }
+  .sum-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .sum-card .card-value { font-size: 22px; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 4px 20px 8px;
+  }
+
+  /* CATEGORY BARS */
+  .cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-emoji { font-size: 18px; width: 28px; text-align: center; }
+  .cat-info { flex: 1; }
+  .cat-name { font-size: 14px; font-weight: 500; }
+  .cat-bar-wrap { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+  .cat-bar { height: 4px; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+  .cat-amount { font-size: 14px; font-weight: 600; color: var(--red); white-space: nowrap; }
+
+  /* ACCOUNT BREAKDOWN */
+  .acct-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .acct-row:last-child { border-bottom: none; }
+  .acct-owner { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .acct-owner.eddie { color: var(--eddie); }
+  .acct-owner.luciana { color: var(--luciana); }
+  .acct-name { font-size: 14px; font-weight: 500; margin-top: 1px; }
+  .acct-amount { font-size: 16px; font-weight: 600; color: var(--red); }
+  .acct-amount.income { color: var(--accent); }
+
+  /* TRANSACTIONS */
+  .tx-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-icon {
+    width: 40px; height: 40px;
+    background: var(--surface2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tx-amount { font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .tx-amount.expense { color: var(--red); }
+  .tx-amount.income { color: var(--accent); }
+  .tx-recurring { font-size: 10px; color: var(--amber); background: rgba(240,192,96,0.12); border-radius: 4px; padding: 1px 5px; display: inline-block; margin-top: 2px; }
+
+  /* FILTER PILLS */
+  .filter-wrap {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .filter-wrap::-webkit-scrollbar { display: none; }
+  .pill {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0e0f11;
+    font-weight: 600;
+  }
+
+  /* SUBSCRIPTIONS */
+  .sub-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sub-row:last-child { border-bottom: none; }
+  .sub-icon {
+    width: 42px; height: 42px;
+    background: var(--surface2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .sub-info { flex: 1; }
+  .sub-name { font-size: 15px; font-weight: 500; }
+  .sub-detail { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .sub-price { text-align: right; }
+  .sub-monthly { font-size: 16px; font-weight: 600; color: var(--text); }
+  .sub-annual { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* PROJECTION */
+  .proj-person {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 0 16px 12px;
+    overflow: hidden;
+  }
+  .proj-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .proj-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .proj-name { font-weight: 600; font-size: 16px; }
+  .proj-body { padding: 14px 18px; }
+  .proj-field { margin-bottom: 12px; }
+  .proj-field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; margin-bottom: 6px; }
+  .proj-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 10px 14px;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .proj-input:focus { border-color: var(--accent); }
+  .proj-result {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .proj-result-label { font-size: 13px; color: var(--muted); }
+  .proj-result-value { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--accent); }
+
+  /* ADD FORM */
+  .form-wrap { padding: 0 16px; }
+  .field { margin-bottom: 16px; }
+  .field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; margin-bottom: 6px; font-weight: 600; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    padding: 12px 14px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .toggle-label { font-size: 15px; }
+  .toggle {
+    width: 44px; height: 26px;
+    background: var(--border);
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    background: white;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  .type-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .type-btn {
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .type-btn.active-expense { background: rgba(240,96,96,0.12); border-color: var(--red); color: var(--red); }
+  .type-btn.active-income { background: rgba(200,240,96,0.12); border-color: var(--accent); color: var(--accent); }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #0e0f11;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 16px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-top: 8px;
+  }
+  .submit-btn:active { opacity: 0.8; }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: calc(70px + var(--safe-bottom) + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #0e0f11;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* SALDO TOTAL HERO */
+  .saldo-hero {
+    padding: 8px 20px 20px;
+    text-align: center;
+  }
+  .saldo-hero-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+  .saldo-hero-value { font-family: 'DM Serif Display', serif; font-size: 52px; letter-spacing: -2px; color: var(--accent); line-height: 1; }
+  .saldo-hero-month { font-size: 13px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- PAGE: RESUMO -->
+<div class="page active" id="page-resumo">
+  <div class="header">
+    <div class="header-title">Finanças 💰</div>
+    <div class="header-sub">Eddie & Luciana · CIBC</div>
+  </div>
+
+  <div class="month-bar">
+    <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+    <div class="month-label" id="month-label"></div>
+    <button class="month-btn" onclick="changeMonth(1)">›</button>
+  </div>
+
+  <div class="saldo-hero">
+    <div class="saldo-hero-label">Saldo do Mês</div>
+    <div class="saldo-hero-value" id="hero-saldo">$0</div>
+    <div class="saldo-hero-month" id="hero-sub">receita − gastos</div>
+  </div>
+
+  <div class="sum-grid">
+    <div class="sum-card">
+      <div class="card-label">↑ Receita</div>
+      <div class="card-value positive" id="sum-receita">$0</div>
+    </div>
+    <div class="sum-card">
+      <div class="card-label">↓ Gastos</div>
+      <div class="card-value negative" id="sum-gastos">$0</div>
+    </div>
+    <div class="sum-card">
+      <div class="card-label">🔁 Assinat./mês</div>
+      <div class="card-value neutral" id="sum-assina-mes">$0</div>
+    </div>
+    <div class="sum-card">
+      <div class="card-label">📅 Assinat./ano</div>
+      <div class="card-value neutral" id="sum-assina-ano">$0</div>
+    </div>
+  </div>
+
+  <div class="section-title">Por Categoria</div>
+  <div class="card" style="padding: 4px 0;">
+    <div id="cat-list"></div>
+  </div>
+
+  <div class="section-title" style="margin-top:8px;">Por Conta</div>
+  <div class="card" style="padding: 4px 0;">
+    <div id="acct-list"></div>
+  </div>
+</div>
+
+<!-- PAGE: ASSINATURAS -->
+<div class="page" id="page-assinaturas">
+  <div class="header">
+    <div class="header-title">Assinaturas 🔁</div>
+    <div class="header-sub">Recorrentes mensais</div>
+  </div>
+  <div class="sum-grid">
+    <div class="sum-card">
+      <div class="card-label">Total / mês</div>
+      <div class="card-value negative" id="sub-total-mes">$0</div>
+    </div>
+    <div class="sum-card">
+      <div class="card-label">Total / ano</div>
+      <div class="card-value negative" id="sub-total-ano">$0</div>
+    </div>
+  </div>
+  <div class="card" style="padding: 4px 0;" id="sub-list">
+    <div class="empty"><div class="empty-icon">🔁</div><div class="empty-text">Nenhuma assinatura ainda</div></div>
+  </div>
+</div>
+
+<!-- PAGE: HISTÓRICO -->
+<div class="page" id="page-historico">
+  <div class="header">
+    <div class="header-title">Histórico 📋</div>
+    <div class="header-sub" id="hist-count">Todas as transações</div>
+  </div>
+  <div class="filter-wrap" id="hist-filters"></div>
+  <div class="card" style="padding: 4px 0;" id="tx-list">
+    <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma transação ainda</div></div>
+  </div>
+</div>
+
+<!-- PAGE: PROJEÇÃO -->
+<div class="page" id="page-projecao">
+  <div class="header">
+    <div class="header-title">Projeção 📈</div>
+    <div class="header-sub">Receita estimada por horas</div>
+  </div>
+
+  <div class="proj-person">
+    <div class="proj-header">
+      <div class="proj-dot" style="background:var(--eddie)"></div>
+      <div class="proj-name">Eddie</div>
+    </div>
+    <div class="proj-body">
+      <div class="proj-field">
+        <label>Valor por hora ($/h)</label>
+        <input class="proj-input" type="number" id="eddie-rate" placeholder="0.00" oninput="calcProj()">
+      </div>
+      <div class="proj-field">
+        <label>Horas por mês</label>
+        <input class="proj-input" type="number" id="eddie-hours" placeholder="0" oninput="calcProj()">
+      </div>
+      <div class="proj-result">
+        <div class="proj-result-label">Receita estimada</div>
+        <div class="proj-result-value" id="eddie-proj">$0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="proj-person">
+    <div class="proj-header">
+      <div class="proj-dot" style="background:var(--luciana)"></div>
+      <div class="proj-name">Luciana</div>
+    </div>
+    <div class="proj-body">
+      <div class="proj-field">
+        <label>Valor por hora ($/h)</label>
+        <input class="proj-input" type="number" id="luciana-rate" placeholder="0.00" oninput="calcProj()">
+      </div>
+      <div class="proj-field">
+        <label>Horas por mês</label>
+        <input class="proj-input" type="number" id="luciana-hours" placeholder="0" oninput="calcProj()">
+      </div>
+      <div class="proj-result">
+        <div class="proj-result-label">Receita estimada</div>
+        <div class="proj-result-value" id="luciana-proj">$0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Total familiar / mês</div>
+    <div class="card-value positive" id="proj-total">$0</div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-label">Total familiar / ano</div>
+    <div class="card-value positive" id="proj-anual">$0</div>
+  </div>
+</div>
+
+<!-- PAGE: ADICIONAR -->
+<div class="page" id="page-adicionar">
+  <div class="header">
+    <div class="header-title">Adicionar ✚</div>
+    <div class="header-sub">Nova transação</div>
+  </div>
+
+  <div class="form-wrap">
+
+    <div class="field">
+      <label>Tipo</label>
+      <div class="type-row">
+        <button class="type-btn active-expense" id="btn-gasto" onclick="setType('gasto')">↓ Gasto</button>
+        <button class="type-btn" id="btn-receita" onclick="setType('receita')">↑ Receita</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Descrição</label>
+      <input type="text" id="f-desc" placeholder="Ex: Mercado, Netflix..." autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Valor ($)</label>
+      <input type="number" id="f-valor" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
+    </div>
+
+    <div class="field">
+      <label>Data</label>
+      <input type="date" id="f-data">
+    </div>
+
+    <div class="field">
+      <label>Pessoa</label>
+      <select id="f-pessoa">
+        <option value="Eddie">Eddie</option>
+        <option value="Luciana">Luciana</option>
+        <option value="Família">Família (ambos)</option>
+      </select>
+    </div>
+
+    <div class="field" id="field-conta">
+      <label>Conta</label>
+      <select id="f-conta">
+        <optgroup label="Eddie">
+          <option value="Eddie · Chequing">Chequing</option>
+          <option value="Eddie · Savings">Savings</option>
+          <option value="Eddie · Cartão 1">Cartão 1</option>
+          <option value="Eddie · Cartão 2">Cartão 2</option>
+        </optgroup>
+        <optgroup label="Luciana">
+          <option value="Luciana · Chequing">Chequing</option>
+          <option value="Luciana · Savings">Savings</option>
+          <option value="Luciana · Cartão 1">Cartão 1</option>
+        </optgroup>
+        <optgroup label="Família">
+          <option value="Família">Compartilhado</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="field" id="field-cat">
+      <label>Categoria</label>
+      <select id="f-cat">
+        <option value="Aluguel">🏠 Aluguel</option>
+        <option value="Mercado">🛒 Mercado</option>
+        <option value="Transporte">🚗 Transporte</option>
+        <option value="Assinaturas">🔁 Assinaturas</option>
+        <option value="Manutenção">🔧 Manutenção</option>
+        <option value="Restaurante">🍽️ Restaurante</option>
+        <option value="Saúde">💊 Saúde</option>
+        <option value="Lazer">🎉 Lazer</option>
+        <option value="Outro">📦 Outro</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Recorrente?</label>
+      <div class="toggle-row">
+        <span class="toggle-label">Cobrança mensal automática</span>
+        <button class="toggle" id="toggle-recorrente" onclick="toggleRecorrente()"></button>
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="addTransaction()">Salvar Transação</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('resumo', this)">
+    <span class="nav-icon">◈</span>Resumo
+  </button>
+  <button class="nav-btn" onclick="showPage('assinaturas', this)">
+    <span class="nav-icon">🔁</span>Assinat.
+  </button>
+  <button class="nav-btn" onclick="showPage('historico', this)">
+    <span class="nav-icon">📋</span>Histórico
+  </button>
+  <button class="nav-btn" onclick="showPage('projecao', this)">
+    <span class="nav-icon">📈</span>Projeção
+  </button>
+  <button class="nav-btn" onclick="showPage('adicionar', this)">
+    <span class="nav-icon">✚</span>Adicionar
+  </button>
+</nav>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+const STORAGE_KEY = 'familia-financas-v1';
+let transactions = [];
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let currentType = 'gasto';
+let isRecorrente = false;
+let histFilter = 'Todos';
+
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const CAT_EMOJI = { Aluguel:'🏠', Mercado:'🛒', Transporte:'🚗', Assinaturas:'🔁', Manutenção:'🔧', Restaurante:'🍽️', Saúde:'💊', Lazer:'🎉', Receita:'💰', Outro:'📦' };
+
+// ─── PERSISTENCE ─────────────────────────────────────────
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions)); } catch(e) {}
+}
+function load() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if (d) transactions = JSON.parse(d);
+  } catch(e) { transactions = []; }
+}
+
+// ─── FORMAT ──────────────────────────────────────────────
+function fmt(n) {
+  return '$' + Math.abs(n).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtSigned(n) {
+  return (n < 0 ? '-' : '') + fmt(n);
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'resumo') renderResumo();
+  if (id === 'assinaturas') renderAssinaturas();
+  if (id === 'historico') renderHistorico();
+  window.scrollTo(0, 0);
+}
+
+// ─── MONTH ───────────────────────────────────────────────
+function changeMonth(d) {
+  currentMonth += d;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  updateMonthLabel();
+  renderResumo();
+}
+function updateMonthLabel() {
+  document.getElementById('month-label').textContent = MONTHS[currentMonth] + ' ' + currentYear;
+}
+
+function txInMonth(tx) {
+  if (!tx.data) return false;
+  const d = new Date(tx.data + 'T12:00:00');
+  return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+}
+
+// ─── RESUMO ──────────────────────────────────────────────
+function renderResumo() {
+  const monthTx = transactions.filter(txInMonth);
+  const receita = monthTx.filter(t => t.tipo === 'receita').reduce((s,t) => s + t.valor, 0);
+  const gastos = monthTx.filter(t => t.tipo === 'gasto').reduce((s,t) => s + t.valor, 0);
+  const saldo = receita - gastos;
+
+  // Assinaturas totais (não filtradas por mês)
+  const subs = transactions.filter(t => t.recorrente && t.tipo === 'gasto');
+  const subMes = subs.reduce((s,t) => s + t.valor, 0);
+
+  const heroEl = document.getElementById('hero-saldo');
+  heroEl.textContent = fmt(saldo);
+  heroEl.className = 'saldo-hero-value ' + (saldo >= 0 ? 'positive' : 'negative');
+
+  document.getElementById('sum-receita').textContent = fmt(receita);
+  document.getElementById('sum-gastos').textContent = fmt(gastos);
+  document.getElementById('sum-assina-mes').textContent = fmt(subMes);
+  document.getElementById('sum-assina-ano').textContent = fmt(subMes * 12);
+
+  // Categorias
+  const catMap = {};
+  monthTx.filter(t => t.tipo === 'gasto').forEach(t => {
+    catMap[t.categoria] = (catMap[t.categoria] || 0) + t.valor;
+  });
+  const maxCat = Math.max(...Object.values(catMap), 1);
+  const catList = document.getElementById('cat-list');
+  if (Object.keys(catMap).length === 0) {
+    catList.innerHTML = '<div class="empty" style="padding:30px"><div class="empty-text">Nenhum gasto este mês</div></div>';
+  } else {
+    const sorted = Object.entries(catMap).sort((a,b) => b[1]-a[1]);
+    catList.innerHTML = sorted.map(([cat, val]) => `
+      <div class="cat-row">
+        <span class="cat-emoji">${CAT_EMOJI[cat]||'📦'}</span>
+        <div class="cat-info">
+          <div class="cat-name">${cat}</div>
+          <div class="cat-bar-wrap"><div class="cat-bar" style="width:${(val/maxCat*100).toFixed(1)}%"></div></div>
+        </div>
+        <span class="cat-amount">-${fmt(val)}</span>
+      </div>`).join('');
+  }
+
+  // Por conta
+  const acctMap = {};
+  monthTx.forEach(t => {
+    if (!acctMap[t.conta]) acctMap[t.conta] = { income: 0, expense: 0 };
+    if (t.tipo === 'receita') acctMap[t.conta].income += t.valor;
+    else acctMap[t.conta].expense += t.valor;
+  });
+  const acctList = document.getElementById('acct-list');
+  if (Object.keys(acctMap).length === 0) {
+    acctList.innerHTML = '<div class="empty" style="padding:30px"><div class="empty-text">Sem movimentações</div></div>';
+  } else {
+    acctList.innerHTML = Object.entries(acctMap).map(([conta, v]) => {
+      const owner = conta.includes('Eddie') ? 'Eddie' : conta.includes('Luciana') ? 'Luciana' : 'Família';
+      const ownerClass = owner.toLowerCase();
+      const net = v.income - v.expense;
+      return `
+      <div class="acct-row">
+        <div>
+          <div class="acct-owner ${ownerClass}">${owner}</div>
+          <div class="acct-name">${conta.replace(/^(Eddie|Luciana) · /,'')}</div>
+        </div>
+        <div class="acct-amount ${net >= 0 ? 'income' : ''}">${net >= 0 ? '+' : '-'}${fmt(net)}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ─── ASSINATURAS ─────────────────────────────────────────
+function renderAssinaturas() {
+  const subs = transactions.filter(t => t.recorrente && t.tipo === 'gasto');
+  const total = subs.reduce((s,t) => s + t.valor, 0);
+  document.getElementById('sub-total-mes').textContent = fmt(total);
+  document.getElementById('sub-total-ano').textContent = fmt(total * 12);
+
+  const el = document.getElementById('sub-list');
+  if (subs.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔁</div><div class="empty-text">Nenhuma assinatura cadastrada</div></div>';
+    return;
+  }
+  el.innerHTML = subs.map(t => `
+    <div class="sub-row">
+      <div class="sub-icon">${CAT_EMOJI[t.categoria]||'🔁'}</div>
+      <div class="sub-info">
+        <div class="sub-name">${t.descricao}</div>
+        <div class="sub-detail">${t.conta} · ${t.categoria}</div>
+      </div>
+      <div class="sub-price">
+        <div class="sub-monthly">-${fmt(t.valor)}</div>
+        <div class="sub-annual">-${fmt(t.valor*12)}/ano</div>
+      </div>
+      <button class="delete-btn" onclick="deleteTx('${t.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ─── HISTÓRICO ───────────────────────────────────────────
+function renderHistorico() {
+  // Build filter pills
+  const cats = ['Todos', ...Object.keys(CAT_EMOJI).filter(c => c !== 'Receita'), 'Receita'];
+  const filterWrap = document.getElementById('hist-filters');
+  filterWrap.innerHTML = cats.map(c =>
+    `<button class="pill ${c === histFilter ? 'active' : ''}" onclick="setHistFilter('${c}')">${CAT_EMOJI[c]||'▤'} ${c}</button>`
+  ).join('');
+
+  let filtered = [...transactions].sort((a,b) => new Date(b.data) - new Date(a.data));
+  if (histFilter !== 'Todos') {
+    if (histFilter === 'Receita') filtered = filtered.filter(t => t.tipo === 'receita');
+    else filtered = filtered.filter(t => t.categoria === histFilter);
+  }
+
+  document.getElementById('hist-count').textContent = `${filtered.length} transaç${filtered.length === 1 ? 'ão' : 'ões'}`;
+
+  const el = document.getElementById('tx-list');
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma transação</div></div>';
+    return;
+  }
+  el.innerHTML = filtered.map(t => {
+    const d = new Date(t.data + 'T12:00:00');
+    const dateStr = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+    return `
+    <div class="tx-row">
+      <div class="tx-icon">${CAT_EMOJI[t.categoria]||'📦'}</div>
+      <div class="tx-info">
+        <div class="tx-desc">${t.descricao}</div>
+        <div class="tx-meta">${dateStr} · ${t.conta}</div>
+        ${t.recorrente ? '<span class="tx-recurring">🔁 Recorrente</span>' : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="tx-amount ${t.tipo === 'receita' ? 'income' : 'expense'}">${t.tipo === 'receita' ? '+' : '-'}${fmt(t.valor)}</div>
+        <button class="delete-btn" onclick="deleteTx('${t.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setHistFilter(cat) {
+  histFilter = cat;
+  renderHistorico();
+}
+
+// ─── PROJEÇÃO ────────────────────────────────────────────
+function calcProj() {
+  const er = parseFloat(document.getElementById('eddie-rate').value) || 0;
+  const eh = parseFloat(document.getElementById('eddie-hours').value) || 0;
+  const lr = parseFloat(document.getElementById('luciana-rate').value) || 0;
+  const lh = parseFloat(document.getElementById('luciana-hours').value) || 0;
+  const eTotal = er * eh;
+  const lTotal = lr * lh;
+  const total = eTotal + lTotal;
+  document.getElementById('eddie-proj').textContent = fmt(eTotal);
+  document.getElementById('luciana-proj').textContent = fmt(lTotal);
+  document.getElementById('proj-total').textContent = fmt(total);
+  document.getElementById('proj-anual').textContent = fmt(total * 12);
+}
+
+// ─── FORM ────────────────────────────────────────────────
+function setType(t) {
+  currentType = t;
+  document.getElementById('btn-gasto').className = 'type-btn' + (t === 'gasto' ? ' active-expense' : '');
+  document.getElementById('btn-receita').className = 'type-btn' + (t === 'receita' ? ' active-income' : '');
+  document.getElementById('field-cat').style.display = t === 'receita' ? 'none' : '';
+  if (t === 'receita') { isRecorrente = false; document.getElementById('toggle-recorrente').className = 'toggle'; }
+}
+
+function toggleRecorrente() {
+  isRecorrente = !isRecorrente;
+  document.getElementById('toggle-recorrente').className = 'toggle' + (isRecorrente ? ' on' : '');
+}
+
+function addTransaction() {
+  const desc = document.getElementById('f-desc').value.trim();
+  const valor = parseFloat(document.getElementById('f-valor').value);
+  const data = document.getElementById('f-data').value;
+  const pessoa = document.getElementById('f-pessoa').value;
+  const contaRaw = document.getElementById('f-conta').value;
+  const cat = currentType === 'receita' ? 'Receita' : document.getElementById('f-cat').value;
+
+  if (!desc) { showToast('Digite uma descrição'); return; }
+  if (!valor || valor <= 0) { showToast('Digite um valor válido'); return; }
+  if (!data) { showToast('Selecione uma data'); return; }
+
+  // Auto-set conta based on pessoa
+  let conta = contaRaw;
+  if (pessoa === 'Família') conta = 'Família';
+
+  const tx = {
+    id: Date.now().toString(),
+    tipo: currentType,
+    descricao: desc,
+    valor: valor,
+    data: data,
+    pessoa: pessoa,
+    conta: conta,
+    categoria: cat,
+    recorrente: currentType === 'gasto' ? isRecorrente : false
+  };
+
+  transactions.push(tx);
+  save();
+
+  // Reset form
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-valor').value = '';
+  isRecorrente = false;
+  document.getElementById('toggle-recorrente').className = 'toggle';
+
+  showToast('✓ Transação salva!');
+  setTimeout(() => showPage('historico', document.querySelectorAll('.nav-btn')[2]), 600);
+}
+
+function deleteTx(id) {
+  transactions = transactions.filter(t => t.id !== id);
+  save();
+  renderAssinaturas();
+  renderHistorico();
+  renderResumo();
+  showToast('Transação removida');
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ─── INIT ────────────────────────────────────────────────
+function init() {
+  load();
+  updateMonthLabel();
+  renderResumo();
+  // Set today's date in form
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-data').value = today;
+  // Update conta options based on pessoa
+  document.getElementById('f-pessoa').addEventListener('change', function() {
+    const p = this.value;
+    const contaSelect = document.getElementById('f-conta');
+    if (p === 'Eddie') {
+      contaSelect.value = 'Eddie · Chequing';
+    } else if (p === 'Luciana') {
+      contaSelect.value = 'Luciana · Chequing';
+    } else {
+      contaSelect.value = 'Família';
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
