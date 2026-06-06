@@ -604,6 +604,54 @@
   </div>
 </div>
 
+<!-- MODAL: IMPORTAR CSV -->
+<div id="modal-import" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+  <div style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px calc(24px + var(--safe-bottom));max-height:90dvh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <div style="font-family:'DM Serif Display',serif;font-size:22px;">Importar CSV</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">Extrato CIBC · dados ficam só no iPhone</div>
+      </div>
+      <button onclick="closeImport()" style="background:var(--surface2);border:none;border-radius:50%;width:32px;height:32px;color:var(--muted);font-size:18px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="field">
+      <label>Conta do extrato</label>
+      <select id="imp-conta">
+        <optgroup label="Eddie">
+          <option value="Eddie · Chequing">Eddie · Chequing</option>
+          <option value="Eddie · Savings">Eddie · Savings</option>
+          <option value="Eddie · Cartão 1">Eddie · Cartão 1</option>
+          <option value="Eddie · Cartão 2">Eddie · Cartão 2</option>
+        </optgroup>
+        <optgroup label="Luciana">
+          <option value="Luciana · Chequing">Luciana · Chequing</option>
+          <option value="Luciana · Savings">Luciana · Savings</option>
+          <option value="Luciana · Cartão 1">Luciana · Cartão 1</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Arquivo CSV</label>
+      <div id="drop-zone" onclick="document.getElementById('csv-file').click()" style="border:2px dashed var(--border);border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s;">
+        <div style="font-size:32px;margin-bottom:8px;">📂</div>
+        <div style="font-size:14px;color:var(--muted);" id="drop-label">Toque para selecionar o CSV</div>
+      </div>
+      <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="handleCSV(this)">
+    </div>
+
+    <div id="imp-preview" style="display:none;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px;font-weight:600;" id="imp-preview-label"></div>
+      <div id="imp-preview-list" style="background:var(--surface2);border-radius:12px;max-height:220px;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="cancelImport()" style="flex:1;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer;">Cancelar</button>
+        <button onclick="confirmImport()" style="flex:2;padding:14px;background:var(--accent);border:none;border-radius:12px;color:#0e0f11;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;" id="imp-confirm-btn">Importar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PAGE: ADICIONAR -->
 <div class="page" id="page-adicionar">
   <div class="header">
@@ -689,6 +737,10 @@
     </div>
 
     <button class="submit-btn" onclick="addTransaction()">Salvar Transação</button>
+
+    <button onclick="openImport()" style="width:100%;margin-top:10px;padding:14px;background:none;border:1px solid var(--border);border-radius:12px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      📂 Importar CSV do CIBC
+    </button>
   </div>
 </div>
 
@@ -1004,7 +1056,178 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ─── INIT ────────────────────────────────────────────────
+// ─── CSV IMPORT ──────────────────────────────────────────
+let pendingImport = [];
+
+function openImport() {
+  document.getElementById('modal-import').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeImport() {
+  document.getElementById('modal-import').style.display = 'none';
+  document.body.style.overflow = '';
+  pendingImport = [];
+  document.getElementById('imp-preview').style.display = 'none';
+  document.getElementById('drop-label').textContent = 'Toque para selecionar o CSV';
+  document.getElementById('csv-file').value = '';
+}
+function cancelImport() { closeImport(); }
+
+function handleCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('drop-label').textContent = '⏳ Lendo ' + file.name + '...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    parseCSV(text);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) { showToast('CSV inválido ou vazio'); return; }
+
+  // Detect CIBC format:
+  // Chequing/Savings: Date, Description, Withdrawals($), Deposits($), Balance($)
+  // Credit card:      Date, Description, Debit, Credit
+  const header = lines[0].toLowerCase();
+  const isCredit = header.includes('debit') || header.includes('credit');
+
+  const conta = document.getElementById('imp-conta').value;
+  const pessoa = conta.includes('Eddie') ? 'Eddie' : 'Luciana';
+  pendingImport = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i]);
+    if (cols.length < 3) continue;
+
+    let date, desc, amount, tipo;
+
+    if (isCredit) {
+      // Credit: Date, Description, Debit, Credit
+      date = parseDate(cols[0]);
+      desc = cols[1] ? cols[1].trim().replace(/^"|"$/g,'') : '';
+      const debit  = parseFloat((cols[2]||'').replace(/[^0-9.-]/g,'')) || 0;
+      const credit = parseFloat((cols[3]||'').replace(/[^0-9.-]/g,'')) || 0;
+      if (debit > 0)  { amount = debit;  tipo = 'gasto'; }
+      else if (credit > 0) { amount = credit; tipo = 'receita'; }
+      else continue;
+    } else {
+      // Chequing/Savings: Date, Description, Withdrawals, Deposits, Balance
+      date = parseDate(cols[0]);
+      desc = cols[1] ? cols[1].trim().replace(/^"|"$/g,'') : '';
+      const withdraw = parseFloat((cols[2]||'').replace(/[^0-9.-]/g,'')) || 0;
+      const deposit  = parseFloat((cols[3]||'').replace(/[^0-9.-]/g,'')) || 0;
+      if (withdraw > 0) { amount = withdraw; tipo = 'gasto'; }
+      else if (deposit > 0) { amount = deposit; tipo = 'receita'; }
+      else continue;
+    }
+
+    if (!date || !desc || !amount) continue;
+
+    // Auto-categorize
+    const cat = autoCategoria(desc, tipo);
+
+    pendingImport.push({
+      id: Date.now().toString() + i,
+      tipo, descricao: desc, valor: amount,
+      data: date, pessoa, conta, categoria: cat, recorrente: false
+    });
+  }
+
+  if (pendingImport.length === 0) {
+    showToast('Nenhuma transação encontrada');
+    document.getElementById('drop-label').textContent = 'Toque para selecionar o CSV';
+    return;
+  }
+
+  // Show preview
+  document.getElementById('drop-label').textContent = '✓ ' + file_name_global;
+  document.getElementById('imp-preview-label').textContent = pendingImport.length + ' transações encontradas — revise antes de importar';
+  document.getElementById('imp-confirm-btn').textContent = 'Importar ' + pendingImport.length + ' transações';
+
+  const previewList = document.getElementById('imp-preview-list');
+  previewList.innerHTML = pendingImport.slice(0, 50).map(t => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);">
+      <span style="font-size:16px;">${CAT_EMOJI[t.categoria]||'📦'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.descricao}</div>
+        <div style="font-size:11px;color:var(--muted);">${t.data} · ${t.categoria}</div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:${t.tipo==='receita'?'var(--accent)':'var(--red)'};">${t.tipo==='receita'?'+':'-'}${fmt(t.valor)}</div>
+    </div>`).join('') + (pendingImport.length > 50 ? `<div style="padding:10px 14px;color:var(--muted);font-size:12px;">...e mais ${pendingImport.length-50} transações</div>` : '');
+
+  document.getElementById('imp-preview').style.display = 'block';
+}
+
+let file_name_global = '';
+
+function handleCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  file_name_global = file.name;
+  document.getElementById('drop-label').textContent = '⏳ Lendo ' + file.name + '...';
+  const reader = new FileReader();
+  reader.onload = function(e) { parseCSV(e.target.result); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function confirmImport() {
+  if (pendingImport.length === 0) return;
+  // Remove duplicates by id/desc/date/valor
+  let added = 0;
+  pendingImport.forEach(tx => {
+    const dup = transactions.find(t => t.data === tx.data && t.descricao === tx.descricao && t.valor === tx.valor && t.conta === tx.conta);
+    if (!dup) { transactions.push(tx); added++; }
+  });
+  save();
+  closeImport();
+  showToast('✓ ' + added + ' transações importadas!');
+  renderResumo();
+  renderHistorico();
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  str = str.trim().replace(/^"|"$/g,'');
+  // MM/DD/YYYY or DD/MM/YYYY or YYYY-MM-DD
+  let m;
+  if ((m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/))) return str;
+  if ((m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/))) return `${m[3]}-${m[1]}-${m[2]}`;
+  if ((m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  return null;
+}
+
+function autoCategoria(desc, tipo) {
+  if (tipo === 'receita') return 'Receita';
+  const d = desc.toLowerCase();
+  if (/rent|aluguel|apartment|lease/.test(d)) return 'Aluguel';
+  if (/grocery|supermark|loblaws|metro|sobeys|walmart|costco|mercado|food basic|no frills|freshco|real canadian/.test(d)) return 'Mercado';
+  if (/uber|lyft|ttc|presto|gas|shell|esso|petro|parking|estacion|transit|highway|407|401/.test(d)) return 'Transporte';
+  if (/netflix|spotify|apple|google|amazon prime|disney|youtube|hulu|bell|rogers|telus|fido|koodo|virgin|wind|freedom|crave/.test(d)) return 'Assinaturas';
+  if (/restaurant|resto|pizza|sushi|burger|mcdonald|kfc|tim horton|starbucks|coffee|cafe|bar |pub |grill|kitchen|bistro|thai|chinese|indian|pho|ramen/.test(d)) return 'Restaurante';
+  if (/pharmacy|pharma|drug|shoppers|rexall|hospital|clinic|doctor|dental|optom|health|medic|prescri/.test(d)) return 'Saúde';
+  if (/cinema|movie|theatre|theater|sport|gym|fitness|rec |recreation|museum|concert|ticket|entertainment|game|play/.test(d)) return 'Lazer';
+  if (/home depot|canadian tire|rona|ikea|repair|maintenance|hardware|plumb|electr|hvac/.test(d)) return 'Manutenção';
+  return 'Outro';
+}
+
+
 function init() {
   load();
   updateMonthLabel();
