@@ -283,14 +283,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card-label">↓ Gastos</div>
       <div class="card-value negative" id="sum-gastos">$0</div>
     </div>
-    <div class="sum-card">
-      <div class="card-label">🔁 Assinat./mês</div>
-      <div class="card-value" style="color:var(--text)" id="sum-assina-mes">$0</div>
-    </div>
-    <div class="sum-card">
-      <div class="card-label">📅 Assinat./ano</div>
-      <div class="card-value" style="color:var(--text)" id="sum-assina-ano">$0</div>
-    </div>
   </div>
 
   <!-- CHART -->
@@ -427,13 +419,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <select id="f-cat">
         <option value="Aluguel">🏠 Aluguel</option>
         <option value="Mercado">🛒 Mercado</option>
-        <option value="Transporte">⛽ Transporte</option>
+        <option value="Combustível">⛽ Combustível</option>
+        <option value="Transporte">🚌 Transporte</option>
         <option value="Assinaturas">🔁 Assinaturas</option>
         <option value="Restaurante">🍽️ Restaurante</option>
         <option value="Saúde">💊 Saúde</option>
         <option value="Seguro Vida">🛡️ Seguro Vida</option>
         <option value="Seguro Carro/Casa">🚗 Seguro Carro/Casa</option>
-        <option value="Natação Estevão">🏊 Natação Estevão</option>
+        <option value="Filho">🧒 Filho</option>
+        <option value="Educação">🎓 Educação</option>
         <option value="Manutenção Casa">🔧 Manutenção Casa</option>
         <option value="Manutenção Carro">🚘 Manutenção Carro</option>
         <option value="Investimentos">📈 Investimentos</option>
@@ -441,6 +435,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <option value="Taxas Banco">🏦 Taxas Banco</option>
         <option value="Compras">🛍️ Compras</option>
         <option value="Lazer">🎉 Lazer</option>
+        <option value="Saque">💵 Saque</option>
         <option value="Outro">📦 Outro</option>
       </select>
     </div>
@@ -489,11 +484,11 @@ const MONTHS_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out
 
 const CAT_EMOJI = {
   'Salário':'💰','Câmbio':'💵','Transf. Luciana':'🔄','Transf. Eddie':'🔄',
-  'Aluguel':'🏠','Mercado':'🛒','Transporte':'⛽','Assinaturas':'🔁',
+  'Aluguel':'🏠','Mercado':'🛒','Combustível':'⛽','Transporte':'🚌','Assinaturas':'🔁',
   'Restaurante':'🍽️','Saúde':'💊','Seguro Vida':'🛡️','Seguro Carro/Casa':'🚗',
-  'Natação Estevão':'🏊','Manutenção Casa':'🔧','Manutenção Carro':'🚘',
+  'Filho':'🧒','Educação':'🎓','Manutenção Casa':'🔧','Manutenção Carro':'🚘',
   'Investimentos':'📈','Imigração':'🏛️','Taxas Banco':'🏦','Compras':'🛍️',
-  'Lazer':'🎉','Receita':'💰','Outro':'📦'
+  'Lazer':'🎉','Saque':'💵','Receita':'💰','Outro':'📦'
 };
 
 const INCOME_CATS = new Set(['Salário','Câmbio','Transf. Luciana','Transf. Eddie','Receita']);
@@ -668,16 +663,22 @@ function renderResumo() {
   const receita = monthTx.filter(t=>t.tipo==='receita').reduce((s,t)=>s+t.valor,0);
   const gastos  = monthTx.filter(t=>t.tipo==='gasto').reduce((s,t)=>s+t.valor,0);
   const saldo   = receita - gastos;
-  const subs    = transactions.filter(t=>t.recorrente&&t.tipo==='gasto');
-  const subMes  = subs.reduce((s,t)=>s+t.valor,0);
+
+  // Assinaturas: valor mensal = valor mais recente de cada merchant recorrente
+  const subsMap = {};
+  transactions.filter(t=>t.recorrente&&t.tipo==='gasto')
+    .sort((a,b)=>new Date(b.data)-new Date(a.data))
+    .forEach(t=>{
+      const m = cleanMerchantName(t.descricao);
+      if(!subsMap[m]) subsMap[m] = t.valor;
+    });
+  const subMes = Object.values(subsMap).reduce((s,v)=>s+v,0);
 
   const heroEl = document.getElementById('hero-saldo');
   heroEl.textContent = fmt(saldo);
   heroEl.className = 'saldo-hero-value '+(saldo>=0?'positive':'negative');
   document.getElementById('sum-receita').textContent = fmt(receita);
   document.getElementById('sum-gastos').textContent = fmt(gastos);
-  document.getElementById('sum-assina-mes').textContent = fmt(subMes);
-  document.getElementById('sum-assina-ano').textContent = fmt(subMes*12);
 
   renderChart();
   renderCategories(monthTx);
@@ -820,22 +821,25 @@ function renderAccounts(monthTx) {
 // ASSINATURAS PAGE
 // ═══════════════════════════════════════════════════
 function renderAssinaturas() {
-  const subs = transactions.filter(t=>t.recorrente&&t.tipo==='gasto');
-  const total = subs.reduce((s,t)=>s+t.valor,0);
+  // Use most recent value per merchant
+  const subsMap = {};
+  transactions.filter(t=>t.recorrente&&t.tipo==='gasto')
+    .sort((a,b)=>new Date(b.data)-new Date(a.data))
+    .forEach(t=>{
+      const m=cleanMerchantName(t.descricao);
+      if(!subsMap[m]) subsMap[m]={valor:t.valor,cat:t.categoria,conta:t.conta};
+    });
+  const total = Object.values(subsMap).reduce((s,d)=>s+d.valor,0);
   document.getElementById('sub-total-mes').textContent = fmt(total);
   document.getElementById('sub-total-ano').textContent = fmt(total*12);
 
   const el = document.getElementById('sub-list');
-  if(subs.length===0){
+  if(Object.keys(subsMap).length===0){
     el.innerHTML='<div class="empty"><div class="empty-icon">🔁</div><div class="empty-text">Nenhuma assinatura cadastrada</div></div>';
     return;
   }
 
-  // Group by merchant
-  const map = {};
-  subs.forEach(t=>{ const m=cleanMerchantName(t.descricao); map[m]={valor:t.valor,cat:t.categoria,conta:t.conta}; });
-
-  el.innerHTML = Object.entries(map).sort((a,b)=>b[1].valor-a[1].valor).map(([m,d])=>{
+  el.innerHTML = Object.entries(subsMap).sort((a,b)=>b[1].valor-a[1].valor).map(([m,d])=>{
     const status = subStatus[m]||'unsure';
     const labels = {'keep':'✓ manter','unsure':'? avaliar','cancel':'✕ cancelar'};
     return `<div class="sub-page-row">
@@ -1038,7 +1042,14 @@ function parseCSV(text){
     if(rdl.includes('service charge rewards')&&tipo==='receita') continue; // cashback credit
 
     const desc=cleanMerchantName(rawDesc);
-    const {cat,tipoFinal}=autoCategoria(rawDesc,tipo,conta);
+    const result=autoCategoria(rawDesc,tipo,conta);
+    if(!result) continue; // skip (mdates.com etc)
+
+    // Canadian Tire: if value $40-$100, likely fuel
+    let {cat,tipoFinal}=result;
+    if(/canadian tire(?! gas)/i.test(rawDesc) && amount>=40 && amount<=100) {
+      cat='Combustível';
+    }
 
     const recurrente=isLikelySubscription(rawDesc);
 
@@ -1104,7 +1115,7 @@ function parseDate(s){
 
 function isLikelySubscription(desc){
   const d=desc.toLowerCase();
-  return /netflix|spotify|apple\.com\/bill|amazon.*prime|disney|youtube|crave|bell|rogers|fido|koodo|telus|primerica|agf invest|old oak|london aquatic|hostgator|paddle\.net|manulife|wiserapp|td insurance/.test(d);
+  return /netflix|spotify|apple\.com\/bill|amazon.*prime|disney|youtube|crave|bell|rogers|fido|koodo|telus|primerica|agf invest|old oak|london aquatic|hostgator|paddle\.net|manulife|wiserapp|td insurance|lovable|google one|supabase|gamma\.app|gocardless|intact/.test(d);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1114,15 +1125,15 @@ function autoCategoria(rawDesc, tipo, conta){
   const d=rawDesc.toLowerCase();
   const mname=cleanMerchantName(rawDesc);
 
-  // 1. Check learned rules first
+  // 1. Learned rules first
   if(learnedRules[mname]) return {cat:learnedRules[mname],tipoFinal:INCOME_CATS.has(learnedRules[mname])?'receita':'gasto'};
 
-  // 2. SKIP / INTERNAL
-  if(/internet transfer/.test(d)) return {cat:'Outro',tipoFinal:'gasto'};
+  // 2. Ignore mdates.com
+  if(/mdates\.com/.test(d)) return null;
 
   // ── RECEITAS ──
   if(/fadel'?s perfect green|pay emps.*perfect green|deftpymt.*perfect green/.test(d)) return {cat:'Salário',tipoFinal:'receita'};
-  if(/11614762 canada|jmg construction|jsmg contracting/.test(d)) return {cat:'Câmbio',tipoFinal:'receita'};
+  if(/11614762 canada|jmg construction|jsmg contracting|jose.*dolar|dolar canada/.test(d)) return {cat:'Câmbio',tipoFinal:'receita'};
   if(/e-transfer.*luciana/i.test(d)&&tipo==='receita') return {cat:'Transf. Luciana',tipoFinal:'receita'};
   if(/e-transfer.*eddie/i.test(d)&&tipo==='receita') return {cat:'Transf. Eddie',tipoFinal:'receita'};
   if(/wiserapp/.test(d)&&tipo==='receita') return {cat:'Câmbio',tipoFinal:'receita'};
@@ -1135,63 +1146,75 @@ function autoCategoria(rawDesc, tipo, conta){
   // Aluguel
   if(/old oak properties|ysi\*old oak/.test(d)) return {cat:'Aluguel',tipoFinal:'gasto'};
 
-  // Salário saída (para Luciana)
+  // Transferências
   if(/e-transfer.*luciana/i.test(d)&&tipo==='gasto') return {cat:'Transf. Luciana',tipoFinal:'gasto'};
   if(/e-transfer.*eddie/i.test(d)&&tipo==='gasto') return {cat:'Transf. Eddie',tipoFinal:'gasto'};
 
-  // Câmbio saída
+  // Câmbio
   if(/wiserapp/.test(d)&&tipo==='gasto') return {cat:'Câmbio',tipoFinal:'gasto'};
+  if(/e-transfer.*jose.*dolar|dolar canada/.test(d)&&tipo==='gasto') return {cat:'Câmbio',tipoFinal:'gasto'};
+
+  // Combustível — Canadian Tire $40-$100 é provavelmente combustível
+  if(/petro-canada|petro canada|shell c\d|costco gas|canadian tire gas bar/.test(d)) return {cat:'Combustível',tipoFinal:'gasto'};
+
+  // Transporte (não combustível)
+  if(/uber|lyft|park indigo|parking|presto|ttc |via rail|407-etr|407 etr|bird\*|transit|bus gateway|ace parking/.test(d)) return {cat:'Transporte',tipoFinal:'gasto'};
 
   // Mercado
-  if(/costco wholesale|costco gas|food basics|loblaws|loblaw|walmart|wal-mart|sobeys|remark fresh|sunripe|t&t |angelo'?s italian|adonis|tavora|bulk barn|robert & tracey|no frills|freshco|real canadian|superstore|rcss|metro |farm boy|zehrs/.test(d)) return {cat:'Mercado',tipoFinal:'gasto'};
-
-  // Transporte
-  if(/petro-canada|petro canada|shell |esso |canadian tire gas|costco gas|uber|lyft|park indigo|parking|presto|ttc |via rail|407-etr|407 etr|bird\*|transit|bus gateway/.test(d)) return {cat:'Transporte',tipoFinal:'gasto'};
+  if(/costco wholesale|food basics|loblaws|loblaw|walmart|wal-mart|sobeys|remark fresh|sunripe|t&t |angelo'?s italian|adonis|tavora|bulk barn|robert & tracey|no frills|freshco|real canadian|superstore|rcss|metro |farm boy|zehrs|superking|mona farms|costco annual|costco.*renew/.test(d)) return {cat:'Mercado',tipoFinal:'gasto'};
 
   // Manutenção Carro
-  if(/finch nissan|fix right auto|london auto clinic|elegance auto spa|rock auto|tire #|tiger auto|air-serv/.test(d)) return {cat:'Manutenção Carro',tipoFinal:'gasto'};
+  if(/finch nissan|fix right auto|london auto clinic|elegance auto spa|rock auto|tiger auto|air-serv|luciano.*mec|mr lube|mts guincho|titanium.*auto|titanium.*tire|tire.*london(?!.*gas)/.test(d)) return {cat:'Manutenção Carro',tipoFinal:'gasto'};
+
+  // Canadian Tire: se valor entre $40-$100 = combustível, senão manutenção casa
+  // (tratado na lógica de valor — aqui marcamos como Manutenção Casa por default)
+  if(/canadian tire(?! gas)/.test(d)) return {cat:'Manutenção Casa',tipoFinal:'gasto'};
 
   // Manutenção Casa
-  if(/home depot|canadian tire(?! gas)|rona|ikea|wyse meter|staples|hardware/.test(d)) return {cat:'Manutenção Casa',tipoFinal:'gasto'};
+  if(/home depot|rona|ikea|wyse meter|staples|hardware/.test(d)) return {cat:'Manutenção Casa',tipoFinal:'gasto'};
 
   // Seguro Vida
   if(/primerica/.test(d)) return {cat:'Seguro Vida',tipoFinal:'gasto'};
 
   // Seguro Carro/Casa
-  if(/td insurance|td assurance|manulife(?! individual)/.test(d)) return {cat:'Seguro Carro/Casa',tipoFinal:'gasto'};
+  if(/td insurance|td assurance|td general|intact/.test(d)) return {cat:'Seguro Carro/Casa',tipoFinal:'gasto'};
 
   // Saúde
-  if(/shoppers drug|rexall|pharmacy|dental|northland dental|einsteins optical|optom|hospital|clinic|doctor|st joseph|manulife individual|alpha labs/.test(d)) return {cat:'Saúde',tipoFinal:'gasto'};
+  if(/shoppers drug|rexall|pharmacy|dental|northland dental|einsteins optical|optom|hospital|clinic|doctor|st joseph|manulife individual|alpha labs|tmc farm|dentista/.test(d)) return {cat:'Saúde',tipoFinal:'gasto'};
 
-  // Natação Estevão
-  if(/london aquatic club|aquatic/.test(d)) return {cat:'Natação Estevão',tipoFinal:'gasto'};
+  // Filho
+  if(/london aquatic|aquatic club|forest cliff|armstrong|e-transfer.*lac\b|london district cathol|london dist cath/.test(d)) return {cat:'Filho',tipoFinal:'gasto'};
+
+  // Educação
+  if(/ellen english|teacher mike|durham college|gocardless|lu ingl|grasiela|rafael canada|fanshawe|bill pay.*fanshawe|hotlunchorders|thames valley|vretta|e-visa immigration(?!.*pr)/.test(d)) return {cat:'Educação',tipoFinal:'gasto'};
+
+  // Imigração
+  if(/pgwp|csra |mto |embassy mrv|prometric|e-transfer.*beatriz|e-visa.*immigr/.test(d)) return {cat:'Imigração',tipoFinal:'gasto'};
 
   // Assinaturas
-  if(/netflix|spotify|apple\.com\/bill|amazon.*prime|amazonprime|disney|youtube|crave|rogers(?!\s\*\*)|fido mobile|hostgator|paddle\.net|sonatel|yolla|abacus\.ai|openai|anthropic/.test(d)) return {cat:'Assinaturas',tipoFinal:'gasto'};
+  if(/netflix|spotify|apple\.com\/bill|amazon.*prime|amazonprime|disney|youtube|crave|fido mobile|hostgator|paddle\.net|sonatel|yolla|abacus\.ai|openai|anthropic|lovable|google one|supabase|gamma\.app|gocardless(?!.*english)/.test(d)) return {cat:'Assinaturas',tipoFinal:'gasto'};
+  if(/rogers(?!\s\*\*)/.test(d)) return {cat:'Assinaturas',tipoFinal:'gasto'};
   if(/bell (?!tower)/.test(d)) return {cat:'Assinaturas',tipoFinal:'gasto'};
 
   // Restaurante
-  if(/tim horton|starbucks|subway |boston pizza|scaddabush|babaz|villa madina|bar burrito|taco bell|burger king|wendy'?s|mcdonald|kfc|pizza|sushi|pho|ramen|restaurant|resto |cafe |coffee|bakery|bread|churi|padaria|hyper berry|zanders|fire grill|arc pub|aroma bar|canteen|banana burger|alley/.test(d)) return {cat:'Restaurante',tipoFinal:'gasto'};
+  if(/tim horton|starbucks|subway |boston pizza|scaddabush|babaz|villa madina|taco bell|burger king|wendy'?s|mcdonald|kfc|pizza|sushi|pho|ramen|restaurant|resto |cafe |coffee|bakery|bread|churi|padaria|hyper berry|zanders|fire grill|arc pub|aroma bar|canteen|banana burger|alley|mandarin|little caesar|alzain|omzzy|jack astor|onroute|pita pit|shelby|love.*brazilian|love.*food|fadis|bar burrito|sultan/.test(d)) return {cat:'Restaurante',tipoFinal:'gasto'};
 
   // Investimentos
   if(/agf invest/.test(d)) return {cat:'Investimentos',tipoFinal:'gasto'};
 
-  // Imigração
-  if(/pgwp|csra |mto |visa application|embassy mrv/.test(d)) return {cat:'Imigração',tipoFinal:'gasto'};
-
   // Taxas Banco
-  if(/service charge|overdraft fee|overdraft interest|network fee|annual fee|purchase interest|pol fees|cibc card products(?!.*division.*receita)/.test(d)) return {cat:'Taxas Banco',tipoFinal:'gasto'};
+  if(/service charge|overdraft fee|overdraft interest|network fee|annual fee|purchase interest|pol fees|cibc card products/.test(d)) return {cat:'Taxas Banco',tipoFinal:'gasto'};
 
   // Compras
-  if(/amazon(?!.*prime)|amzn|best buy|apple store|zara|winners|marshalls|bath & body|under armour|sport chek|temu|dollarama|mastermind|gaspard|mydoh/.test(d)) return {cat:'Compras',tipoFinal:'gasto'};
+  if(/amazon(?!.*prime)|amzn|best buy|apple store|zara|winners|marshalls|bath & body|under armour|sport chek|temu|dollarama|mastermind|gaspard|mydoh|game.*stop|old navy|structube|dell canada/.test(d)) return {cat:'Compras',tipoFinal:'gasto'};
 
   // Lazer
-  if(/cinema|ripley|rec room|lcbo|wine rack|winery|table rock|niagara|camping|forest cliff|museum|concert|sport chek|muvwear/.test(d)) return {cat:'Lazer',tipoFinal:'gasto'};
+  if(/cinema|ripley|rec room|lcbo|wine rack|winery|table rock|niagara|museum|concert|muvwear|wonderland|delaware group/.test(d)) return {cat:'Lazer',tipoFinal:'gasto'};
 
-  // Escola/Educação
-  if(/hotlunchorders|thames valley|vretta|school/.test(d)) return {cat:'Natação Estevão',tipoFinal:'gasto'};
+  // Saque
+  if(/atm withdrawal|atm deposit(?!.*deposit.*receita)|automated banking machine.*withdrawal/.test(d)) return {cat:'Saque',tipoFinal:'gasto'};
 
-  // Se tipo=receita e nao identificado
+  // Se receita não identificada
   if(tipo==='receita') return {cat:'Receita',tipoFinal:'receita'};
 
   return {cat:'Outro',tipoFinal:'gasto'};
